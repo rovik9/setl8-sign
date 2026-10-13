@@ -1,0 +1,18 @@
+[package]
+name = "setl8-keystore"
+description = "Key backend abstraction for the Setl8 signer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+zeroize = "1"
+
+[dev-dependencies]
+ed25519-dalek = "2"
+getrandom = "0.2"

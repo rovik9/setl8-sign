@@ -1,0 +1,8 @@
+target/
+.env*
+# keypair-style JSON (Solana keypair files are JSON arrays of bytes)
+*.json
+!.claude/settings.json
+!.claude/settings.json.example
+*.keypair
+*.pem

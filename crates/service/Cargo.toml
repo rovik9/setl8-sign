@@ -1,0 +1,15 @@
+[package]
+name = "setl8-signer"
+description = "Setl8 signer daemon"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+setl8-policy = { path = "../policy" }
+setl8-keystore = { path = "../keystore" }
