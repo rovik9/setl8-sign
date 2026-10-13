@@ -1,0 +1,93 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked --version 0.20.2
+      - run: cargo deny check
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks (pinned, checksum-verified)
+        run: |
+          curl -sSfL -o gl.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz
+          echo "79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e  gl.tgz" | sha256sum -c -
+          mkdir gl && tar -xzf gl.tgz -C gl
+      - name: Scan history
+        run: ./gl/gitleaks git --redact --verbose .
+
+  identity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve commit range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "BASE=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_ENV"
+            echo "HEAD=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_ENV"
+          else
+            git fetch --no-tags origin main
+            echo "BASE=$(git merge-base origin/main ${{ github.sha }})" >> "$GITHUB_ENV"
+            echo "HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
+      - run: ./scripts/check_identity.sh "$BASE" "$HEAD"
+
+  protected-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve commit range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "BASE=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_ENV"
+            echo "HEAD=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_ENV"
+          else
+            git fetch --no-tags origin main
+            echo "BASE=$(git merge-base origin/main ${{ github.sha }})" >> "$GITHUB_ENV"
+            echo "HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
+      - run: ./scripts/check_protected_paths.sh "$BASE" "$HEAD"
+
+  policy-vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Policy golden vectors
+        run: |
+          # TODO(interfaces): run policy tests against interfaces/golden/ once exported.
+          if [ -d interfaces/golden ]; then
+            echo "interfaces/golden/ present but no vector runner exists yet" ; exit 1
+          fi
+          echo "interfaces/golden/ absent; placeholder passes"
